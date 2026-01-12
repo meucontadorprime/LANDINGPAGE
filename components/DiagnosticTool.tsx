@@ -6,6 +6,7 @@ const DiagnosticTool: React.FC = () => {
   const [painPoints, setPainPoints] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DiagnosticResponse | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   // Lead Form States
   const [formData, setFormData] = useState({ nome: '', telefone: '', email: '', cnpj: '' });
@@ -13,15 +14,10 @@ const DiagnosticTool: React.FC = () => {
   const [formSent, setFormSent] = useState(false);
   const [cnpjError, setCnpjError] = useState(false);
 
-  // Função de validação de CNPJ (Algoritmo oficial)
   const validateCNPJ = (cnpj: string) => {
     cnpj = cnpj.replace(/[^\d]+/g, '');
     if (cnpj === '' || cnpj.length !== 14) return false;
-
-    // Elimina CNPJs inválidos conhecidos
     if (/^(\d)\1+$/.test(cnpj)) return false;
-
-    // Valida DVs
     let tamanho = cnpj.length - 2;
     let numeros = cnpj.substring(0, tamanho);
     let digitos = cnpj.substring(tamanho);
@@ -33,7 +29,6 @@ const DiagnosticTool: React.FC = () => {
     }
     let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
     if (resultado !== parseInt(digitos.charAt(0))) return false;
-
     tamanho = tamanho + 1;
     numeros = cnpj.substring(0, tamanho);
     soma = 0;
@@ -44,7 +39,6 @@ const DiagnosticTool: React.FC = () => {
     }
     resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
     if (resultado !== parseInt(digitos.charAt(1))) return false;
-
     return true;
   };
 
@@ -53,12 +47,13 @@ const DiagnosticTool: React.FC = () => {
     if (!painPoints.trim()) return;
     
     setLoading(true);
+    setErrorMsg(null);
     try {
       const data = await getAccountingDiagnostic(painPoints);
       setResult(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Diagnostic error:", error);
-      alert("Houve um erro no diagnóstico. Tente novamente em instantes.");
+      setErrorMsg("Falha na conexão com o motor Prime. Verifique se as credenciais de API estão ativas no ambiente.");
     } finally {
       setLoading(false);
     }
@@ -66,19 +61,13 @@ const DiagnosticTool: React.FC = () => {
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validação do CNPJ antes de prosseguir
     if (!validateCNPJ(formData.cnpj)) {
       setCnpjError(true);
       return;
     }
-
     setFormSubmitting(true);
-    
     try {
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbyqmIhyGoKzd1QNOi3AOGVVsnzYkyLTa5wOxiAmLP_bwTdy4zS78eWXXCCtXsYTuk_9-w/exec';
-      
-      // Montagem do payload JSON
       const payload = {
         nome: formData.nome,
         telefone: formData.telefone,
@@ -88,21 +77,17 @@ const DiagnosticTool: React.FC = () => {
         input_usuario: painPoints,
         feedback_ia: result?.analysis || 'Diagnóstico Prime não disponível'
       };
-
       await fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         cache: 'no-cache',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
       setFormSent(true);
     } catch (error) {
-      console.error("Erro ao enviar para a planilha:", error);
-      alert("Houve um problema ao processar seu envio. Por favor, entre em contato diretamente via WhatsApp.");
+      console.error("Erro ao enviar lead:", error);
+      alert("Houve um problema ao processar seu envio. Por favor, utilize o WhatsApp.");
     } finally {
       setFormSubmitting(false);
     }
@@ -128,9 +113,16 @@ const DiagnosticTool: React.FC = () => {
                 <textarea 
                   value={painPoints}
                   onChange={(e) => setPainPoints(e.target.value)}
-                  className="w-full bg-black border border-white/10 rounded-sm p-6 text-white focus:ring-1 focus:ring-gold focus:border-transparent outline-none transition-all mb-10 h-40 font-light placeholder:text-white/10"
+                  className="w-full bg-black border border-white/10 rounded-sm p-6 text-white focus:ring-1 focus:ring-gold focus:border-transparent outline-none transition-all mb-6 h-40 font-light placeholder:text-white/10"
                   placeholder="Ex: Demora no envio de guias, falta de visão financeira, erros recorrentes..."
                 ></textarea>
+                
+                {errorMsg && (
+                  <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-sm text-red-500 text-xs font-bold uppercase tracking-widest text-center">
+                    <i className="fas fa-exclamation-triangle mr-2"></i> {errorMsg}
+                  </div>
+                )}
+
                 <button 
                   type="submit"
                   disabled={loading || !painPoints}
@@ -256,7 +248,10 @@ const DiagnosticTool: React.FC = () => {
               )}
               
               <button 
-                onClick={() => setResult(null)}
+                onClick={() => {
+                  setResult(null);
+                  setErrorMsg(null);
+                }}
                 className="text-white/20 hover:text-gold text-xs font-bold uppercase tracking-widest transition-colors flex items-center space-x-2"
               >
                 <i className="fas fa-arrow-left"></i>
