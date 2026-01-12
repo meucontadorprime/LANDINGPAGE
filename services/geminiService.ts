@@ -2,18 +2,20 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { DiagnosticResponse } from "../types.ts";
 
 export const getAccountingDiagnostic = async (painPoints: string): Promise<DiagnosticResponse> => {
-  const apiKey = process.env.API_KEY;
+  // Acesso seguro ao process.env para evitar 'ReferenceError' no browser
+  const env = (typeof process !== 'undefined' && process.env) ? process.env : (window as any).process?.env;
+  const apiKey = env?.API_KEY;
 
   if (!apiKey) {
-    console.error("ERRO: API_KEY não encontrada no ambiente. Verifique as configurações do Vercel.");
-    throw new Error("Configuração de API ausente.");
+    console.error("ERRO: API_KEY não encontrada. No Vercel, adicione em Settings > Environment Variables.");
+    throw new Error("Chave de API não configurada.");
   }
 
   const ai = new GoogleGenAI({ apiKey });
   
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview', 
       contents: `Você é um consultor sênior da "Meu Contador Prime", uma empresa de contabilidade estratégica de elite. 
       Analise o seguinte relato do usuário: "${painPoints}".
 
@@ -56,15 +58,14 @@ export const getAccountingDiagnostic = async (painPoints: string): Promise<Diagn
     });
 
     const text = response.text;
-    if (!text) throw new Error("Resposta vazia da IA.");
+    if (!text) throw new Error("A IA retornou uma resposta vazia.");
 
-    // Extração robusta de JSON (remove possíveis marcações de markdown ```json ... ```)
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const jsonStr = jsonMatch ? jsonMatch[0] : text;
-
-    return JSON.parse(jsonStr) as DiagnosticResponse;
+    // Limpeza rigorosa para garantir que apenas o JSON seja processado
+    const cleanJson = text.trim().replace(/^```json/, '').replace(/```$/, '').trim();
+    
+    return JSON.parse(cleanJson) as DiagnosticResponse;
   } catch (error) {
-    console.error("Erro detalhado na chamada da Gemini API:", error);
+    console.error("Erro na Gemini API:", error);
     throw error;
   }
 };

@@ -52,8 +52,12 @@ const DiagnosticTool: React.FC = () => {
       const data = await getAccountingDiagnostic(painPoints);
       setResult(data);
     } catch (error: any) {
-      console.error("Diagnostic error:", error);
-      setErrorMsg("Falha na conexão com o motor Prime. Verifique se as credenciais de API estão ativas no ambiente.");
+      console.error("Diagnostic error detail:", error);
+      if (error.message?.includes("Chave de API")) {
+        setErrorMsg("Configuração incompleta: A API_KEY não foi detectada no ambiente de hospedagem.");
+      } else {
+        setErrorMsg("O motor de IA Prime está temporariamente indisponível. Por favor, tente novamente em instantes.");
+      }
     } finally {
       setLoading(false);
     }
