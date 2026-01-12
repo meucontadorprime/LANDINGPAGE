@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; }
+        #player-container { 
+            position: relative; 
+            width: 100%; 
+            height: 100%; 
+        }
+        iframe { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+        }
+    </style>
+</head>
+<body>
+    <div id="player-container"></div>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoId = urlParams.get('vid') || 'R2Zxq5g43jU';
+        
+        // Autoplay requer mute=1 na maioria dos navegadores modernos
+        // modestbranding=1 remove parte da logo
+        // rel=0 evita vídeos relacionados de outros canais
+        // controls=1 mantemos os controles para o usuário, mas o topo (title/share) é reduzido pelo YouTube em embeds limpos
+        const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&controls=1&showinfo=0&iv_load_policy=3`;
+        
+        const iframe = document.createElement('iframe');
+        iframe.src = src;
+        iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+        iframe.allowFullscreen = true;
+        // Referrer policy ajuda a mitigar o erro 153 em alguns contextos
+        iframe.referrerPolicy = "no-referrer-when-downgrade";
+        
+        document.getElementById('player-container').appendChild(iframe);
+    </script>
+</body>
+</html>
